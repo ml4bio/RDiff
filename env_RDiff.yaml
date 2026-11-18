@@ -1,0 +1,79 @@
+name: RDiff
+channels:
+  - pyg
+  - pytorch
+  - nvidia
+  - defaults
+dependencies:
+  # Core runtime
+  - python=3.12
+  - pip
+  - numpy
+  - scipy=1.14.1
+  - pandas
+  - scikit-learn
+  - pyyaml
+  - networkx
+  - tqdm
+  - requests
+
+  # PyTorch + CUDA (12.1)
+  - pytorch=2.3.1
+  - torchvision=0.18.1
+  - torchaudio=2.3.1
+  - pytorch-cuda=12.1
+  - pyg=2.6.1
+
+  # Hydra
+  - hydra-core=1.3.2
+  - hydra-joblib-launcher=1.2.0
+
+  # Visualization / plotting
+  - matplotlib
+
+  # Optional: video deps needed by some torch builds
+  - ffmpeg
+
+  # Python packaging helpers
+  - setuptools
+  - wheel
+
+  # Extra utilities used across both modules (via pip)
+  - pip:
+      - GPUtil
+      - biopython
+      - biotite
+      - fair-esm
+      - einops
+      - lightning==2.4.0
+      - pytorch-lightning==2.5.0.post0
+      - torchmetrics
+      - transformers
+      - tokenizers
+      - ml-collections
+      - omegaconf
+      - msgpack-numpy
+      - pathos
+      - p-tqdm
+      - psutil
+      - wandb
+      - pandas==2.2.3
+      - matplotlib==3.10.0
+      - scipy==1.14.1
+      - scikit-learn==1.6.0
+      - lightning-utilities
+      - torch-scatter==2.1.2+pt23cu121
+      - torch-sparse==0.6.18+pt23cu121
+      - torch-cluster==1.6.3+pt23cu121
+      - tqdm==4.67.1
+      - regex
+      - sentry-sdk
+      - pydantic
+      - pydantic-core
+      - cloudpathlib
+      - huggingface-hub
+      - safetensors
+      - seaborn
+      - tabulate
+      - ipython
+

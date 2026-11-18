@@ -1,0 +1,144 @@
+# Inference configuration for secondary-structure + noncanonical-condition
+# RDiff_str sampling. Some data/experiment fields are retained because old
+# checkpoints store and merge this config schema; they are not used for training
+# in this public repository.
+
+defaults:
+  - override hydra/launcher: joblib
+
+data:
+  # Checkpoint-compatible schema fields. Override inference.* fields below for sampling.
+  data_list: list/all_rmsa_v3_16
+  data_root: ./
+  bprna_aug_list: list/af3_bprna_list
+  bprna_aug_root: ./
+  ribonanza_aug_list: list/ribonanza_list
+  ribonanza_aug_root: ./
+  cluster_path: list/cluster_mapping.csv
+  min_t: 0.01
+  samples_per_eval_length: 4
+  num_eval_lengths: 10
+  num_t: 100
+  motif_cond_ratio: -1.
+  ss_channel: 3
+  ss_partial: True
+  mask_method: paired_sync_v1
+  use_nc_detail_cond: True
+  nc_sparse_dirname: NC_sparse
+  nc_channel: 11
+  align_trans: True
+
+diffuser:
+  diffuse_trans: True
+  diffuse_rot: True
+
+  # R(3) diffuser arguments
+  r3:
+    min_b: 0.1
+    max_b: 20.0
+    coordinate_scaling: 0.1
+
+  # SO(3) diffuser arguments
+  so3:
+    num_omega: 1000
+    num_sigma: 1000
+    min_sigma: 0.1
+    max_sigma: 1.5
+    schedule: logarithmic
+    cache_dir: .cache/
+    use_cached_score: False
+
+model:
+  name: score_network
+  node_embed_size: 256
+  edge_embed_size: 128
+  dropout: 0.0
+  embed:
+    ct_in_ch: ${data.ss_channel}
+    ct_embed_size: 32
+    index_embed_size: 32
+    embed_self_conditioning: True
+    num_bins: 22
+    min_bin: 1e-5
+    max_bin: 20.0
+    embed_fixed_mask: False
+    use_nc_detail_cond: ${data.use_nc_detail_cond}
+    nc_channel: ${data.nc_channel}
+    nc_embed_size: 16
+  ipa:
+    c_s: ${model.node_embed_size}
+    c_z: ${model.edge_embed_size}
+    c_hidden: 256
+    c_skip: 64
+    no_heads: 8
+    no_qk_points: 8
+    no_v_points: 12
+    seq_tfmr_num_heads: 4
+    seq_tfmr_num_layers: 2
+    num_blocks: 4
+    coordinate_scaling: ${diffuser.r3.coordinate_scaling}
+
+    use_plddt: True
+    plddt_c_in: ${model.node_embed_size}
+    plddt_no_bins: 50
+
+experiment:
+  # Checkpoint-compatible experiment schema. These fields are not used for
+  # public training in this repository.
+  name: ss_partial_nc_rna
+  run_id: null
+  use_ddp : False
+  batch_size: 128
+  eval_batch_size: ${data.samples_per_eval_length}
+  use_gpu: True
+  num_gpus: 4
+  wandb_dir: ./exps/
+  use_wandb: False
+  warm_start: null
+  use_warm_start_conf: False
+  ckpt_dir: ./exps/ckpt/
+  extra_ckpt_dir: ./exps/ckpt/
+  coordinate_scaling: ${diffuser.r3.coordinate_scaling}
+  eval_dir: ./exps/eval_outputs
+  noise_scale: 1.0
+  num_parameters: null
+
+inference:
+  name: ss_partial_nc_backbone_generation
+  gpu_id: null  # CUDA GPU to use. null means automatically choose an available GPU.
+  seed: 123
+  task_name: ss_nc_conditional
+
+  # Directory of outputs.
+  output_dir: ./inference_outputs/
+
+  # Path to the ss-partial+NC model checkpoint.
+  weights_path: RDiff_str_ckpts/ss_partial_nc.pth
+
+  # condition_dir must contain ssmap3/*.npy and NC_sparse/*.npz with matched basenames.
+  condition_dir: ./time_censor
+  ssmap_dir: null
+  nc_sparse_dir: null
+  ssmap_path: null
+  nc_sparse_path: null
+  target_list: null
+  target_length: -1
+  max_targets: -1
+
+  # Number of backbone samples generated per target.
+  num_samples: 10
+
+  # Flexible diffusion setting for sampling.
+  diffusion:
+    # Number of reverse diffusion steps.
+    num_t: 300
+    # Analogous to sampling temperature.
+    noise_scale: 0.1
+    # Final t.
+    min_t: 0.01
+
+hydra:
+  sweeper:
+    params:
+      experiment.name: baseline_dlc_4gpu
+      experiment.use_wandb: False

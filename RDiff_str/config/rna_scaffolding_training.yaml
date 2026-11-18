@@ -1,0 +1,174 @@
+# Default or base configuration for SE(3) diffusion experiments on RNA data.
+
+defaults:
+  - override hydra/launcher: joblib
+
+data:
+  # data_path for training examples.
+  data_list: list/all_rmsa_v3_16
+  data_root: /workspace/hongliang/huanghan_proj/datas/RNA3D_DATA
+  bprna_aug_list: list/af3_bprna_list
+  bprna_aug_root: /workspace/hongliang/huanghan_proj/datas/bprna_af3
+  ribonanza_aug_list: list/ribonanza_list
+  ribonanza_aug_root: /workspace/hongliang/huanghan_proj/datas/ribonanza_data
+  cluster_path: list/cluster_mapping.csv
+  min_t: 0.01
+  samples_per_eval_length: 4
+  num_eval_lengths: 10
+  num_t: 100
+  motif_cond_ratio: 0.8
+  ss_channel: -1
+  ss_partial: False
+  align_trans: False
+
+diffuser:
+  diffuse_trans: True
+  diffuse_rot: True
+
+  # R(3) diffuser arguments
+  r3:
+    min_b: 0.1
+    max_b: 20.0
+    coordinate_scaling: 0.1
+
+  # SO(3) diffuser arguments
+  so3:
+    num_omega: 1000
+    num_sigma: 1000
+    min_sigma: 0.1
+    max_sigma: 1.5
+    schedule: logarithmic
+    cache_dir: .cache/
+    use_cached_score: False
+
+model:
+  name: score_network
+  node_embed_size: 256
+  edge_embed_size: 128
+  dropout: 0.0
+  embed:
+    index_embed_size: 32
+    embed_self_conditioning: True
+    num_bins: 22
+    min_bin: 1e-5
+    max_bin: 20.0
+    embed_fixed_mask: False
+  ipa:
+    c_s: ${model.node_embed_size}
+    c_z: ${model.edge_embed_size}
+    c_hidden: 256
+    c_skip: 64
+    no_heads: 8
+    no_qk_points: 8
+    no_v_points: 12
+    seq_tfmr_num_heads: 4
+    seq_tfmr_num_layers: 2
+    num_blocks: 4
+    coordinate_scaling: ${diffuser.r3.coordinate_scaling}
+
+    use_plddt: True
+    plddt_c_in: ${model.node_embed_size}
+    plddt_no_bins: 50
+
+experiment:
+  # Experiment metadata
+  name: scaffolding_rna
+  run_id: null
+
+  #training mode
+  use_ddp : False
+
+  # Training arguments
+  log_freq: 1000 # 1000
+  batch_size: 128 # 256
+  eval_batch_size: ${data.samples_per_eval_length}
+  num_loader_workers: 16 # 5
+  num_epoch: 120
+  learning_rate: 0.0001
+  max_squared_res: 500000
+  prefetch_factor: 20
+  use_gpu: True
+  num_gpus: 4
+  sample_mode: cluster_time_batch # time_batch
+
+  # Wandb logging
+  wandb_dir: ./exps/
+  use_wandb: True # False
+
+  # How many steps to checkpoint between.
+  ckpt_freq: 10000
+  extra_ckpt_freq: 250000
+  # Take early checkpoint at step 100. Helpful for catching eval bugs early.
+  early_ckpt: False # True
+
+  # Checkpoint directory to warm start from.
+  warm_start: null
+  use_warm_start_conf: False
+  ckpt_dir: ./exps/ckpt/
+  extra_ckpt_dir: ./exps/ckpt/
+
+  # Loss weights.
+  trans_loss_weight: 1.0
+  rot_loss_weight: 0.5
+  rot_loss_t_threshold: 0.2
+  separate_rot_loss: True
+  trans_x0_threshold: 1.0
+  coordinate_scaling: ${diffuser.r3.coordinate_scaling}
+  bb_atom_loss_weight: 1.0
+  bb_atom_loss_t_filter: 0.25
+  dist_mat_loss_weight: 1.0
+  dist_mat_loss_t_filter: 0.25
+  aux_loss_weight: 0.25
+  sm_lddt_loss_weight: 2.0
+  plddt_loss_weight: 0.15
+
+  # Evaluation.
+  eval_dir: ./exps/eval_outputs
+  noise_scale: 1.0
+  # Filled in during training.
+  num_parameters: null
+
+hydra:
+  sweeper:
+    params:
+      # Example of hydra multi run and wandb.
+      experiment.name: baseline_dlc_4gpu
+      experiment.use_wandb: True
+
+
+inference:
+  name: motif_scaffolding
+  gpu_id: null  # CUDA GPU to use
+  seed: 123
+  task_name: scaffolding
+
+  # Directory of outputs.
+  output_dir: ./inference_outputs/
+
+  # Path to model weights.
+  weights_path: ../RDiff_scaffolding_ckpts/scaffolding_500k.pth
+
+  # target input
+  target_pdb_path: examples/8k7w_broccoli_core.pdb
+  target_length: 120
+  ori_length: 50
+  use_contigs: True
+  contigs: "30/A3-16/15/A29-47"
+  scaffold_iter:
+    contigs: null
+    length_min: 120
+    length_max: 350
+    length_step: 25
+    max_contigs_per_length: 200
+
+  # number for sampling
+  num_samples: 10
+
+  # flexible diffusion setting for sampling
+  diffusion:
+    # Number of steps.
+    num_t: 300
+    # Analogous to sampling temperature.
+    noise_scale: 0.1
+    # Final t.
+    min_t: 0.01

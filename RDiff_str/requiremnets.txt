@@ -1,0 +1,4 @@
+GPUtil
+hydra-core
+hydra-joblib-launcher
+scipy==1.14.1
